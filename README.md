@@ -5,7 +5,7 @@
   2. [Hello World](#hello-world)
 
 ## 介绍
-![React](./img/logo.svg)
+![React](https://github.com/alivebao/React-Tutorial/raw/master/img/logo.jpg)
 本文译自[React官方文档](https://facebook.github.io/react/docs/hello-world.html)
 
 ## hello-world
