@@ -5,6 +5,7 @@
   2. [Hello World](#hello-world)
   3. [学习JSX](#学习jsx)
   4. [渲染元素](#渲染元素)
+  5. [组件和属性](#组件和属性)
 
 ## 介绍
 本文译自[React官方文档](https://facebook.github.io/react/docs/hello-world.html)
@@ -164,12 +165,12 @@ __为了ES6和JSX都能在编辑器中高亮显示，我们推荐您将您的编
 
 ## 渲染元素
 
-在React应用中，元素是最小的构建单位。
+在React应用中，元素是最小的构建单位。  
 元素用于描述你想在屏幕上看到的东西：
 ```javascript
 const element = <h1>Hello, world</h1>;
 ```
-不同于浏览器的DOM元素，React元素是简单对象(Plainj Object)，并且创建代价很小。React DOM负责更新DOM，使其与React元素的一致。
+不同于浏览器的DOM元素，React元素是简单对象(Plainj Object)，并且创建代价很小。React DOM负责更新DOM，使其与React元素的一致。  
 
 *注意：*
 *一个更广为人知的概念-"组件(Components)"可能会让你与"元素"混淆。我们将在下一部分介绍组件。元素是用于建立组件的"原料"之一*
@@ -179,7 +180,7 @@ const element = <h1>Hello, world</h1>;
 ```html
 <div id="root"></div>
 ```
-我们将其称为根元素-其内部所有事物都将由React DOM进行管理。
+我们将其称为根元素-其内部所有事物都将由React DOM进行管理。  
 采用React创建的应用通常有一个根DOM节点。如果是想要将React结合入某个已有的应用，您可以根据需要创建任意多个根DOM节点。
 利用ReactDOM.render()将一个React元素渲染至根DOM节点：
 ```javascript
@@ -227,3 +228,207 @@ React DOM会将元素及其子元素与先前状态进行比较，并且只会�
 
 尽管我们每秒都创建了一个用于描述整个UI树的元素，但只有文本节点的内容被React DOM更新了。
 根据我们的经验，"考虑UI全部时刻的状态而不是如何随时间改变它"能够避免许多问题。
+
+## 组件和属性
+
+组件使你能够将UI划分为独立的，可复用的个体。  
+从概念上来说，组件类似于JavaScript中的函数。  
+他们接受任意输入(这些输入被称为属性-props)并返回React元素，描述其在屏幕上应该如何显示。  
+
+#### 函数式组件和类组件
+定义组件最简单的方式是写一个JavaScript函数：
+```javascript
+function Welcome(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+```
+这个函数是一个有效的React组件-其接受一个单一的，拥有数据的``props``对象作为参数并返回一个React元素。
+
+由于他们在字面上看来是函数，我们将这类组件成为"函数式组件"(Functional)  
+您也可以使用ES6的[class](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Classes)定义一个组件：
+```javascript
+class Welcome extends React.Component {
+  render() {
+    return <h1>Hello, {this.props.name}</h1>;
+  }
+}
+```
+以上两种方式对React而言是一样的。  
+我们将在下一部分讨论class拥有的一些额外的特性。  
+在此之前，由于函数式组件更简洁，我们将使用函数式组件。  
+
+#### 渲染一个组件
+之前，我们只遇到过代表DOM标签的React元素：
+```javascript
+const element = <div />;
+```
+然而，元素也能够代表用户定义的组件：
+```javascript
+const element = <Welcome name="Sara" />;
+```
+当React发现某个代表用户定义组件的元素时，它将把JSX的属性作为一个单独的对象传递给这个组件。  
+我们将这个对象称为"属性(props)"。  
+比如，以下代码将在页面上渲染"Hello, Sara": 
+```javascript
+function Welcome(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+
+const element = <Welcome name="Sara" />;
+ReactDOM.render(
+  element,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](http://codepen.io/gaearon/pen/YGYmEG?editors=0010)  
+在这个例子中：  
+1. 我们将``<Welcome name="Sara" />``作为参数调用了``ReactDOM.render()``
+2. React将``{name: 'Sara'}``作为属性调用了Welcome组件
+3. Welcome组件返回一个``<h1>Hello, Sara</h1>``元素
+4. React DOM高效的更新DOM-使其与``<h1>Hello, Sara</h1>``匹配
+
+__注意__  
+__为组件命名时首字母应大写。__  
+__比如说，``<div />``代表一个DOM标签，但``<Welcome />``则代表一个组件。__  
+
+#### 构建组件
+组件可以在输出中引用其他组件，这使我们能够对任何级别的粒度划分执行组件抽象。一个按钮、一个表单，一个对话框-在React应用中，这些通常都被作为一个组件。
+例如，我们可以创建一个App组件用于多次渲染``Welcome``：
+```javascript
+function Welcome(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+
+function App() {
+  return (
+    <div>
+      <Welcome name="Sara" />
+      <Welcome name="Cahal" />
+      <Welcome name="Edite" />
+    </div>
+  );
+}
+
+ReactDOM.render(
+  <App />,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](http://codepen.io/gaearon/pen/KgQKPr?editors=0010)  
+通常来说，新的React应用在最顶层有一个App组件。但是，如果您是将React引入至某个现有的应用中，你从可以使用如Button这样的小组件开始，自底向上逐步替换。
+
+__注意__  
+__组件比如返回一个单独的根元素。这也是我们为``<Welcome />``元素外面包裹上一层``<div>``的原因__
+
+#### 分解组件
+不要担心将组件分割成更细粒度的组件。  
+例如，考虑如下组件：
+```javascript
+function Comment(props) {
+  return (
+    <div className="Comment">
+      <div className="UserInfo">
+        <img className="Avatar"
+          src={props.author.avatarUrl}
+          alt={props.author.name}
+        />
+        <div className="UserInfo-name">
+          {props.author.name}
+        </div>
+      </div>
+      <div className="Comment-text">
+        {props.text}
+      </div>
+      <div className="Comment-date">
+        {formatDate(props.date)}
+      </div>
+    </div>
+  );
+}
+```
+[在CodePen中尝试](http://codepen.io/gaearon/pen/VKQwEo?editors=0010)  
+该组件接受"作者(一个对象)", "文字(一个字符串)", 和一个"日期"作为属性，并在一个社交媒体网站上描述了评论。  
+由于过多的嵌套，这个组件难以被替换和复用。我们可以考虑对其进行分解。  
+首先，我们可以提取出Avatar：  
+```javascript
+function Avatar(props) {
+  return (
+    <img className="Avatar"
+      src={props.user.avatarUrl}
+      alt={props.user.name}
+    />
+  );
+}
+```
+我们将``user``(一个更通用的名字)而非``author``作为其属性-Avatar不需要知道其是否是用于Comment的  
+我们建议从组件的角度而非其具体的应用场景对组件的属性进行命名。  
+现在可以对``Comment``组件做一下简化：  
+```javascript
+function Comment(props) {
+  return (
+    <div className="Comment">
+      <div className="UserInfo">
+        <Avatar user={props.author} />
+        <div className="UserInfo-name">
+          {props.author.name}
+        </div>
+      </div>
+      <div className="Comment-text">
+        {props.text}
+      </div>
+      <div className="Comment-date">
+        {formatDate(props.date)}
+      </div>
+    </div>
+  );
+}
+```
+接下来，我们接着提取出一个``UserInfo``组件-该组件用于将``Avatar``组件放在用户旁边：  
+```javascript
+function UserInfo(props) {
+  return (
+    <div className="UserInfo">
+      <Avatar user={props.user} />
+      <div className="UserInfo-name">
+        {props.user.name}
+      </div>
+    </div>
+  );
+```
+现在Comment组件可以进一步简化：  
+```javascript
+function Comment(props) {
+  return (
+    <div className="Comment">
+      <UserInfo user={props.author} />
+      <div className="Comment-text">
+        {props.text}
+      </div>
+      <div className="Comment-date">
+        {formatDate(props.date)}
+      </div>
+    </div>
+  );
+}
+```
+[在CodePen中尝试](http://codepen.io/gaearon/pen/rrJNJY?editors=0010)  
+提取组件的工作在开始时看起来意义不大，但在大型应用中，一个能复用的组件库能够大大的减轻开发成本。  
+一个好的经验是-如果你的某个组件要用到几次(如按钮，Avatar等)，或其拥有一定的复杂度(App, FeedStory, Commen等)，则有必要考虑是否需要将其作为可复用组件进行提取。  
+
+#### 组件的属性是只读的
+无论将组件声明为一个函数或一个类，其属性均是不可变的。考虑以下函数``sum``：  
+```javascript
+function sum(a, b) {
+  return a + b;
+}
+```
+这种函数被称为纯函数-他们不企图改变输入的值；对于相同的输入，总是返回相同的结果。  
+作为对比，下面这个函数不是纯函数(其改变了他的输入)：  
+```javascript
+function withdraw(account, amount) {
+  account.total -= amount;
+}
+```
+React非常灵活，但它有一个严格的规定：  
+__所有的React组件必须要像纯函数一样去接受他们的props__  
+当然，应用的UI是动态的，会随着时间改变。在下一部分，我们将介绍一个新的概念-状态(``state``)。不同于属性，状态允许组件对其进行修改。  
