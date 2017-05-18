@@ -7,6 +7,7 @@
   4. [渲染元素](#渲染元素)
   5. [组件和属性](#组件和属性)
   6. [状态和生命周期](#状态和生命周期)
+  7. [事件处理](#事件处理)
 
 ## 介绍
 本文译自[React官方文档](https://facebook.github.io/react/docs/hello-world.html)
@@ -799,3 +800,123 @@ ReactDOM.render(
 [在CodePen中尝试](http://codepen.io/gaearon/pen/vXdGmd?editors=0010)  
 每个``Clock``建立自己的定时器并独立更新。  
 在React应用中，组件是否有状态被认为是组件的实现细节，其可能会随着时间而改变。我们可以在有状态的组件中使用无状态的组件，反之亦然。
+
+## 事件处理
+
+React元素的事件处理与DOM元素很类似，但有一些语法差异：
+* React事件采用驼峰命名
+* 使用JSX，我们可以直接传递函数而非字符串作为事件处理程序
+
+例如，HTML：
+```html
+<button onclick="activateLasers()">
+  Activate Lasers
+</button>
+```
+这在React中稍有不同：
+```html
+<button onClick={activateLasers}>
+  Activate Lasers
+</button>
+```
+另一个不同之处在于，React中我们无法通过返回``false``阻止默认行为。  
+我们必须显式的调用``preventDefault``。例如，在纯HTML中，为防止链接打开新页面的默认行为，我们可以这么写：
+```html
+<a href="#" onclick="console.log('The link was clicked.'); return false">
+  Click me
+</a>
+```
+在React中的写法：
+```javascript
+function ActionLink() {
+  function handleClick(e) {
+    e.preventDefault();
+    console.log('The link was clicked.');
+  }
+
+  return (
+    <a href="#" onClick={handleClick}>
+      Click me
+    </a>
+  );
+}
+```
+这里的``e``是一个事件元素。React根据[W3规范](https://www.w3.org/TR/DOM-Level-3-Events/)定义这一事件，因此我们无需担心浏览器的兼容问题。  
+在使用React时，在一个DOM创建后，需要为其增加监听事件时，我们通常不采用``addEventListener``，而是在元素最初被渲染时提供一个监听器。  
+当我们采用一个[ES6 class](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Classes)定义一个组件时，通常的做法是把事件处理函数作为该类的一个方法。  
+例如，下面这个``Toggle``组件渲染了一个点击切换开关状态的按钮：
+```javascript
+class Toggle extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {isToggleOn: true};
+
+    // This binding is necessary to make `this` work in the callback
+    this.handleClick = this.handleClick.bind(this);
+  }
+
+  handleClick() {
+    this.setState(prevState => ({
+      isToggleOn: !prevState.isToggleOn
+    }));
+  }
+
+  render() {
+    return (
+      <button onClick={this.handleClick}>
+        {this.state.isToggleOn ? 'ON' : 'OFF'}
+      </button>
+    );
+  }
+}
+
+ReactDOM.render(
+  <Toggle />,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](http://codepen.io/gaearon/pen/xEmzGg?editors=0010)。  
+__注意JSX回调中的``this``。__  
+在JavaScript中，类方法不会默认绑定this。  
+如果忘记绑定``this.handleClick``而将其直接传递给``onClick``，当函数被调用时，``this``的值是``undefined``的。  
+这并不是React的特有行为，具体可参看[这篇文章](https://www.smashingmagazine.com/2014/01/understanding-javascript-function-prototype-bind/).  
+通常来说，如果我们引用一个没有``()``的方法，如``onClick = {this.handleClick}``，我们应该绑定该方法。  
+如果不想采用``bind``的方式，这里有另外两种选择。  
+如果你在使用 __实验性__ 的[初始化语法](https://babeljs.io/docs/plugins/transform-class-properties/)，则可以使用属性初始化器完成正确的回调绑定：
+```javascript
+class LoggingButton extends React.Component {
+  // 这个表达式确保this绑在handleClick中
+  // 注意!!! 这个是实验性语法
+  handleClick = () => {
+    console.log('this is:', this);
+  }
+
+  render() {
+    return (
+      <button onClick={this.handleClick}>
+        Click me
+      </button>
+    );
+  }
+}
+```
+另一种方法是在回调中使用[箭头函数](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Functions/Arrow_functions)：
+```javascript
+class LoggingButton extends React.Component {
+  handleClick() {
+    console.log('this is:', this);
+  }
+
+  render() {
+    // 这个表达式确保this绑在handleClick中
+    return (
+      <button onClick={(e) => this.handleClick(e)}>
+        Click me
+      </button>
+    );
+  }
+}
+```
+使用箭头函数的问题在于这种方式会导致每次渲染``LogginButton``时都会创建一个不同的回调函数。  
+在大多情况下，这么做没什么问题。但是，如果这个回调函数是作为属性被传递给更底层的组件时，该组件可能会被影响，造成一次额外的重新渲染。  
+为避免这种问题的发生，我们推荐采用在构造函数中手动绑定或使用属性初始化语法。
