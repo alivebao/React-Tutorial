@@ -8,6 +8,7 @@
   5. [组件和属性](#组件和属性)
   6. [状态和生命周期](#状态和生命周期)
   7. [事件处理](#事件处理)
+  8. [条件渲染](#条件渲染)
 
 ## 介绍
 本文译自[React官方文档](https://facebook.github.io/react/docs/hello-world.html)
@@ -920,3 +921,210 @@ class LoggingButton extends React.Component {
 使用箭头函数的问题在于这种方式会导致每次渲染``LogginButton``时都会创建一个不同的回调函数。  
 在大多情况下，这么做没什么问题。但是，如果这个回调函数是作为属性被传递给更底层的组件时，该组件可能会被影响，造成一次额外的重新渲染。  
 为避免这种问题的发生，我们推荐采用在构造函数中手动绑定或使用属性初始化语法。
+
+## 条件渲染
+
+在React中，我们可以创建多种封装我们需要的行为的组件。然后，我们可以根据应用的状态，只渲染其中的一部分。  
+React的条件渲染与JS中的条件判断相同。使用JS中的``if``或[条件操作符](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/Conditional_Operator)创建表示当前状态的元素，然后让React更新UI以匹配它们。  
+考虑以下两个组件：
+```javascript
+function UserGreeting(props) {
+  return <h1>Welcome back!</h1>;
+}
+
+function GuestGreeting(props) {
+  return <h1>Please sign up.</h1>;
+}
+```
+我们将创建一个``Greeting``组件，其状态取决于用户是否登录：
+```javascript
+function Greeting(props) {
+  const isLoggedIn = props.isLoggedIn;
+  if (isLoggedIn) {
+    return <UserGreeting />;
+  }
+  return <GuestGreeting />;
+}
+
+ReactDOM.render(
+  // Try changing to isLoggedIn={true}:
+  <Greeting isLoggedIn={false} />,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/ZpVxNq?editors=0011)。  
+这里根据属性``isLoggedIn``的值显示出不同的问候语。  
+
+#### 元素变量
+我们可以使用变量保存元素。这可以帮助我们在输出的其他部分不变的情况下，有条件的渲染组件的一部分。  
+考虑以下两个表示登录/登出的组件：
+```javascript
+function LoginButton(props) {
+  return (
+    <button onClick={props.onClick}>
+      Login
+    </button>
+  );
+}
+
+function LogoutButton(props) {
+  return (
+    <button onClick={props.onClick}>
+      Logout
+    </button>
+  );
+}
+```
+在下例中，我们会创建一个有状态的组件-``LoginControl``。  
+该组件将根据其现有的状态渲染成``<LoginButton />``或``<LogoutButton />``，同时也会渲染先前例子中的``<Greeting />``：
+```javascript
+class LoginControl extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleLoginClick = this.handleLoginClick.bind(this);
+    this.handleLogoutClick = this.handleLogoutClick.bind(this);
+    this.state = {isLoggedIn: false};
+  }
+
+  handleLoginClick() {
+    this.setState({isLoggedIn: true});
+  }
+
+  handleLogoutClick() {
+    this.setState({isLoggedIn: false});
+  }
+
+  render() {
+    const isLoggedIn = this.state.isLoggedIn;
+
+    let button = null;
+    if (isLoggedIn) {
+      button = <LogoutButton onClick={this.handleLogoutClick} />;
+    } else {
+      button = <LoginButton onClick={this.handleLoginClick} />;
+    }
+
+    return (
+      <div>
+        <Greeting isLoggedIn={isLoggedIn} />
+        {button}
+      </div>
+    );
+  }
+}
+
+ReactDOM.render(
+  <LoginControl />,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/QKzAgB?editors=0010)。  
+虽然声明一个变量并用``if``表达式是一种有条件的渲染组件的好方法，但有时我们可以采用更简洁的表达式。  
+如下所述，JSX中有几种方法。
+
+#### 内联if和逻辑与操作符&&
+我们可以用``{}``在JSX中嵌入任意表达式，这当然也包括JS中的``&&``。这在某些情况下能非常方便的执行有条件的渲染：
+```javascript
+function Mailbox(props) {
+  const unreadMessages = props.unreadMessages;
+  return (
+    <div>
+      <h1>Hello!</h1>
+      {unreadMessages.length > 0 &&
+        <h2>
+          You have {unreadMessages.length} unread messages.
+        </h2>
+      }
+    </div>
+  );
+}
+
+const messages = ['React', 'Re: React', 'Re:Re: React'];
+ReactDOM.render(
+  <Mailbox unreadMessages={messages} />,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/ozJddz?editors=0010)。  
+这是因为在JS中，``true && expression``的结果取决于``expression``, ``false && expression``的结果总是``false``。  
+因此，如果条件是``true``，就会输出在``&&``之后的元素(也就是``<h2>You have ... </h2>``)，否则React就会忽略它。  
+
+#### 内联 if-else 和条件操作符
+另一种有条件渲染渲染元素的方式是使用JS中的条件表达式``condition ? true : false``。  
+在下例中，我们将使用该表达式渲染一段文本：
+```javascript
+render() {
+  const isLoggedIn = this.state.isLoggedIn;
+  return (
+    <div>
+      The user is <b>{isLoggedIn ? 'currently' : 'not'}</b> logged in.
+    </div>
+  );
+}
+```
+它也可以用于更大的表达式，尽管看起来有些不太直观：
+```html
+render() {
+  const isLoggedIn = this.state.isLoggedIn;
+  return (
+    <div>
+      {isLoggedIn ? (
+        <LogoutButton onClick={this.handleLogoutClick} />
+      ) : (
+        <LoginButton onClick={this.handleLoginClick} />
+      )}
+    </div>
+  );
+}
+```
+具体选择哪种方式取决于你和你的团队。  
+__同时也别忘了，当条件表达式变得过于复杂，这通常意味着是时候对组件进行分解了。__  
+
+#### 防止组件呈现
+在少数情况下，我们也许会需要组件隐藏它自己(即使这个组件是由另一个组件呈现的)。为达到该目的，应在组件的``render``方法中返回``null``而不是其渲染输出。  
+在下例中，``<WarningBanner />``是否渲染取决于属性值``warn``。如果其为``false``，该组件不会被渲染：
+```javascript
+function WarningBanner(props) {
+  if (!props.warn) {
+    return null;
+  }
+
+  return (
+    <div className="warning">
+      Warning!
+    </div>
+  );
+}
+
+class Page extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {showWarning: true}
+    this.handleToggleClick = this.handleToggleClick.bind(this);
+  }
+
+  handleToggleClick() {
+    this.setState(prevState => ({
+      showWarning: !prevState.showWarning
+    }));
+  }
+
+  render() {
+    return (
+      <div>
+        <WarningBanner warn={this.state.showWarning} />
+        <button onClick={this.handleToggleClick}>
+          {this.state.showWarning ? 'Hide' : 'Show'}
+        </button>
+      </div>
+    );
+  }
+}
+
+ReactDOM.render(
+  <Page />,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/Xjoqwm?editors=0010)。  
+在组件的``render``方法中返回``null``不会影响组件生命周期方法的触发。比如，``componentWillUpdate``和``componentDidUpdate``仍将被调用。
