@@ -9,6 +9,7 @@
   6. [状态和生命周期](#状态和生命周期)
   7. [事件处理](#事件处理)
   8. [条件渲染](#条件渲染)
+  9. [列表和键](#列表和键)
 
 ## 介绍
 本文译自[React官方文档](https://facebook.github.io/react/docs/hello-world.html)
@@ -1128,3 +1129,251 @@ ReactDOM.render(
 ```
 [在CodePen中尝试](https://codepen.io/gaearon/pen/Xjoqwm?editors=0010)。  
 在组件的``render``方法中返回``null``不会影响组件生命周期方法的触发。比如，``componentWillUpdate``和``componentDidUpdate``仍将被调用。
+
+## 列表和键
+
+首先让我们来回顾一下在JavaScript如何转换列表。  
+在以下代码段中，我们使用``map()``函数，为其传入一个``numbers``数组，将数组的值翻倍并打印出来：
+```javascript
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map((number) => number * 2);
+console.log(doubled);
+```
+这段代码在控制台中会打印出``[2, 4, 6, 8, 10]``。  
+在React中，将数组转为元素列表的操作基本类似。  
+
+#### 渲染多个组件
+我们可以建立元素集合并用``{}``将他们包含在JSX中。  
+以下代码中，我们使用``map()``遍历``numbers``数组，对其中的每个元素，返回一个``<li>``最后将生成的元素数组赋值给``listItems``：
+```javascript
+const numbers = [1, 2, 3, 4, 5];
+const listItems = numbers.map((number) =>
+  <li>{number}</li>
+);
+```
+我们使用``<ul>``包裹``listItems``并将其渲染至DOM:
+```javascript
+ReactDOM.render(
+  <ul>{listItems}</ul>,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/GjPyQr?editors=0011)。  
+这段代码显示了一段1~5的列表。  
+
+#### 基本的list组件
+通常我们会将list渲染至某个组件中。  
+我们可以将之前的例子重构为一个接受一个数组``numbers``并输出一个无序元素列表的组件。
+```javascript
+function NumberList(props) {
+  const numbers = props.numbers;
+  const listItems = numbers.map((number) =>
+    <li>{number}</li>
+  );
+  return (
+    <ul>{listItems}</ul>
+  );
+}
+
+const numbers = [1, 2, 3, 4, 5];
+ReactDOM.render(
+  <NumberList numbers={numbers} />,
+  document.getElementById('root')
+);
+```
+执行这段代码时会收到一个警告-对list的各列表项需要提供一个key。``key``是创建元素列表时需要包含的特殊字符串属性。我们将在下一部分讨论它为什么重要。  
+为``numbers.map()``中的列表项分配一个key：
+```javascript
+function NumberList(props) {
+  const numbers = props.numbers;
+  const listItems = numbers.map((number) =>
+    <li key={number.toString()}>
+      {number}
+    </li>
+  );
+  return (
+    <ul>{listItems}</ul>
+  );
+}
+
+const numbers = [1, 2, 3, 4, 5];
+ReactDOM.render(
+  <NumberList numbers={numbers} />,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/jrXYRR?editors=0011)。  
+
+#### 键(Keys)
+keys用于帮助React识别出具体是哪个item发生了变化，它应该被赋给元素数组中的各元素以作为其标识：
+```javascript
+const numbers = [1, 2, 3, 4, 5];
+const listItems = numbers.map((number) =>
+  <li key={number.toString()}>
+    {number}
+  </li>
+);
+```
+选择key的最佳实践是使用能够唯一标识各元素的字符串。大多情况下可以使用数据的ID作为key：
+```javascript
+const todoItems = todos.map((todo) =>
+  <li key={todo.id}>
+    {todo.text}
+  </li>
+);
+```
+数据不一定有id属性时，也可以用item的索引替代：
+```javascript
+const todoItems = todos.map((todo, index) =>
+  <li key={index}>
+    {todo.text}
+  </li>
+);
+```
+在item可以重新排序的情况下，不建议使用index作为key-这样会很慢。  
+
+#### 利用key分解组件
+key在数组的上下文中才有意义。  
+例如，要分解一个``listItem``组件，应该将key保留在数组中的``<ListItem />``元素上而不是``<li>``中。  
+__例：错误的使用方式__  
+```javascript
+function ListItem(props) {
+  const value = props.value;
+  return (
+    // Wrong! There is no need to specify the key here:
+    <li key={value.toString()}>
+      {value}
+    </li>
+  );
+}
+
+function NumberList(props) {
+  const numbers = props.numbers;
+  const listItems = numbers.map((number) =>
+    // Wrong! The key should have been specified here:
+    <ListItem value={number} />
+  );
+  return (
+    <ul>
+      {listItems}
+    </ul>
+  );
+}
+
+const numbers = [1, 2, 3, 4, 5];
+ReactDOM.render(
+  <NumberList numbers={numbers} />,
+  document.getElementById('root')
+);
+```
+正确的使用方式：
+```javascript
+function ListItem(props) {
+  // Correct! There is no need to specify the key here:
+  return <li>{props.value}</li>;
+}
+
+function NumberList(props) {
+  const numbers = props.numbers;
+  const listItems = numbers.map((number) =>
+    // Correct! Key should be specified inside the array.
+    <ListItem key={number.toString()}
+              value={number} />
+  );
+  return (
+    <ul>
+      {listItems}
+    </ul>
+  );
+}
+
+const numbers = [1, 2, 3, 4, 5];
+ReactDOM.render(
+  <NumberList numbers={numbers} />,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](https://codepen.io/rthor/pen/QKzJKG?editors=0010)。  
+这里有一个很好的经验法则-``map()``调用中的元素需要key
+
+#### key在兄弟中必须是唯一的
+数组中使用的key在兄弟中必须是唯一的。但是，他们不需要 __全局唯一__ 。两个不同的数组中的key可以相同：
+```javascript
+function Blog(props) {
+  const sidebar = (
+    <ul>
+      {props.posts.map((post) =>
+        <li key={post.id}>
+          {post.title}
+        </li>
+      )}
+    </ul>
+  );
+  const content = props.posts.map((post) =>
+    <div key={post.id}>
+      <h3>{post.title}</h3>
+      <p>{post.content}</p>
+    </div>
+  );
+  return (
+    <div>
+      {sidebar}
+      <hr />
+      {content}
+    </div>
+  );
+}
+
+const posts = [
+  {id: 1, title: 'Hello World', content: 'Welcome to learning React!'},
+  {id: 2, title: 'Installation', content: 'You can install React from npm.'}
+];
+ReactDOM.render(
+  <Blog posts={posts} />,
+  document.getElementById('root')
+);
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/NRZYGN?editors=0010)。  
+key的是供React使用的，但并不会传递给组件。在组件中若需要同样的值，可以取一个不同的名字并将其作为属性显式传递：
+```javascript
+const content = posts.map((post) =>
+  <Post
+    key={post.id}
+    id={post.id}
+    title={post.title} />
+);
+```
+在上例中，``Post``组件可以读到``props.id``，但无法读到``props.key``。
+
+#### 在JSX中嵌入map()
+上例中声明了一个单独的``listItem``变量并将其包含在JSX中：
+```javascript
+function NumberList(props) {
+  const numbers = props.numbers;
+  const listItems = numbers.map((number) =>
+    <ListItem key={number.toString()}
+              value={number} />
+  );
+  return (
+    <ul>
+      {listItems}
+    </ul>
+  );
+```
+JSX允许在``{}``中嵌入表达式，因此可以内联``map()``的输出：
+```javascript
+function NumberList(props) {
+  const numbers = props.numbers;
+  return (
+    <ul>
+      {numbers.map((number) =>
+        <ListItem key={number.toString()}
+                  value={number} />
+      )}
+    </ul>
+  );
+}
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/BLvYrB?editors=0010)。  
+这么做在一些情况下能使代码更清晰，但有时也会造成麻烦。与JavaScript一样，是否需要为可读性提取变量取决于你。  
+注意，如果``map()``的嵌套层级过多，也许这说明是时候分解组件了。
