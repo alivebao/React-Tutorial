@@ -11,6 +11,7 @@
   8. [条件渲染](#条件渲染)
   9. [列表和键](#列表和键)
   10. [表单](#表单)
+  11. [状态提升](#状态提升)
 
 ## 介绍
 本文译自[React官方文档](https://facebook.github.io/react/docs/hello-world.html)
@@ -1605,3 +1606,261 @@ this.setState(partialState);
 #### 受控组件的替代方案
 有时大量使用受控组件会很麻烦-对每种数据的更新都要写好相应的处理函数，并通过React组件管理所有输入状态。  
 在这种情况下，或许我们可以尝试它的替代方案-[非受控组件](https://facebook.github.io/react/docs/uncontrolled-components.html)。
+
+## 状态提升
+
+有些情况下，多个组件需要多同一个数据的变化做出反应。我们推荐这时可以将该变量提升至这些组件共有的父节点中。  
+在本部分，我们将创建一个接受给定温度的温度计，其会计算在给定温度下水是否被煮沸。  
+从组件``BoilingBerdict``开始，该组件接受``celsisu``作为属性，并打印水是否被煮沸。  
+```javascript
+function BoilingVerdict(props) {
+  if (props.celsius >= 100) {
+    return <p>The water would boil.</p>;
+  }
+  return <p>The water would not boil.</p>;
+}
+```
+下一步，创建``Calculator``组件。其渲染一个接受温度输入的``<input>``，并在``this.state.temperature``中保持该值。  
+另外，该组件根据当前的输入渲染``BoilingVerdict``:
+```javascript
+class Calculator extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleChange = this.handleChange.bind(this);
+    this.state = {temperature: ''};
+  }
+
+  handleChange(e) {
+    this.setState({temperature: e.target.value});
+  }
+
+  render() {
+    const temperature = this.state.temperature;
+    return (
+      <fieldset>
+        <legend>Enter temperature in Celsius:</legend>
+        <input
+          value={temperature}
+          onChange={this.handleChange} />
+        <BoilingVerdict
+          celsius={parseFloat(temperature)} />
+      </fieldset>
+    );
+  }
+}
+```
+[在CodePen中尝试](http://codepen.io/valscion/pen/VpZJRZ?editors=0010)。  
+
+#### 增加一个Input
+现在有了一个新需求。除了摄氏度的input外，还需要提供一个华氏度的input，且要求两者保持一致。  
+我们可以先从``Calculator``中提取出``TemperatureInput``组件，并新增一个``scale``属性，该属性的值为``"c"``或``"f"``：
+```javascript
+const scaleNames = {
+  c: 'Celsius',
+  f: 'Fahrenheit'
+};
+
+class TemperatureInput extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleChange = this.handleChange.bind(this);
+    this.state = {temperature: ''};
+  }
+
+  handleChange(e) {
+    this.setState({temperature: e.target.value});
+  }
+
+  render() {
+    const temperature = this.state.temperature;
+    const scale = this.props.scale;
+    return (
+      <fieldset>
+        <legend>Enter temperature in {scaleNames[scale]}:</legend>
+        <input value={temperature}
+               onChange={this.handleChange} />
+      </fieldset>
+    );
+  }
+}
+```
+现在可以将``Calculator``修改为渲染两个不同的温度输入框：
+```javascript
+class Calculator extends React.Component {
+  render() {
+    return (
+      <div>
+        <TemperatureInput scale="c" />
+        <TemperatureInput scale="f" />
+      </div>
+    );
+  }
+}
+```
+[在CodePen中尝试](http://codepen.io/valscion/pen/GWKbao?editors=0010)。  
+现在我们有两个输入框，但当向其中一个输入框输入数据时，另一个并不会随之改变。而我们的需求是两个输入框保持同步。  
+另外，在``Calculator``中也无法显示``BoilingVerdict``。这是因为当前温度的状态已经被隐藏至了``TemperatureInput``中，``Calculator``无法知道当前温度。
+
+#### 编写转换函数
+首先，我们将实现两个用于摄氏度与华氏度间转换的函数：
+```javascript
+function toCelsius(fahrenheit) {
+  return (fahrenheit - 32) * 5 / 9;
+}
+
+function toFahrenheit(celsius) {
+  return (celsius * 9 / 5) + 32;
+}
+```
+这两个函数执行数值间的转换。我们还需要完成另一个函数，该函数接受两个参数-字符串类型的``temperature``和上面的两个函数之一。这个函数能够根据输入的温度值(字符串)计算另一个单位的温度值(字符串)。
+输出的转换值保留小数点后三位，输入值无效时该函数返回一个空字符串：
+```javascript
+function tryConvert(temperature, convert) {
+  const input = parseFloat(temperature);
+  if (Number.isNaN(input)) {
+    return '';
+  }
+  const output = convert(input);
+  const rounded = Math.round(output * 1000) / 1000;
+  return rounded.toString();
+}
+```
+例如，``tryConvert('abc', toCelsius)``将返回一个空字符串，``tryConvert('10.22', toFahrenheit)``将返回``'50.396'``。
+
+#### 状态提升
+现在，两个``TemperatureInput``组件都在他们自己的本地状态中保留各自的值：
+```javascript
+class TemperatureInput extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleChange = this.handleChange.bind(this);
+    this.state = {temperature: ''};
+  }
+
+  handleChange(e) {
+    this.setState({temperature: e.target.value});
+  }
+
+  render() {
+    const temperature = this.state.temperature;
+```
+然而，我们希望两个输入框中的值彼此间同步。当我们更新摄氏度输入框的内容时，华氏度输入框应该改变成相对应的值，反之亦然。  
+React中的状态共享通过将该状态提升至两个组件最近的公共祖先组件的状态完成。这被称之为 __"状态提升"__ 。我们从``TemperatureInput``中移除本地状态并将其放置于``Calculator``中。  
+``Calculator``拥有这个被共享的状态后，该状态成为了两个温度输入框共享的"单一数据源"。这有助于保持两个输入框内容一致。由于两个``TemperatureInput``输入框的属性均来源于同一个父组件``Calculator``，因此两个输入框的内容将始终是同步的。  
+首先。我们将``TemperatureInput``组件中的``this.state.temperature``替换为``this.props.temperature``。现在，假设``this.props.temperature``已经存在(接下来会看到，该值由``Calculator``传递进来)：
+```javascript
+render() {
+    // Before: const temperature = this.state.temperature;
+    const temperature = this.props.temperature;
+```
+我们知道属性是只读的。``temperature``作为本地状态时，``TemperatureInput``可以通过``setState``修改该状态。但当其作为属性被传入时，``TemperatureInput``没有修改该属性的能力。  
+现在，当``TemperatureInput``想要修改``temperature``时，需调用``this.props.onTempatureChange``：
+```javascript
+ handleChange(e) {
+    // Before: this.setState({temperature: e.target.value});
+    this.props.onTemperatureChange(e.target.value);
+```
+注意，在我们自定义的组件中，``temperature``或``onTempatureChange``等属性名均不具有特殊含义。我们可以任意命名，如``value``和``onChange``等。  
+``onTempatureChange``属性和``temperature``一样由父组件``Calculator``传入。该方法通过修改本地状态来处理变更，因此会采用新的值同时更新两个输入框。接下来我们马上将看到``Calculator``的具体实现。  
+在修改``Calculator``前，让我们回顾一下对``TemperatureInput``组件的修改。我们从组件中移除了其本地状态，将``this.state.temperature``转成了``this.props.temperature``。之前通过``this.setState()``执行变更，现在转为通过由``Calculator``提供的``this.props.onTempatureChange``实现：
+```javascript
+class TemperatureInput extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleChange = this.handleChange.bind(this);
+  }
+
+  handleChange(e) {
+    this.props.onTemperatureChange(e.target.value);
+  }
+
+  render() {
+    const temperature = this.props.temperature;
+    const scale = this.props.scale;
+    return (
+      <fieldset>
+        <legend>Enter temperature in {scaleNames[scale]}:</legend>
+        <input value={temperature}
+               onChange={this.handleChange} />
+      </fieldset>
+    );
+  }
+}
+```
+现在再来看``Calculator``组件。  
+我们将当前输入框的``temperature``及该输入框的``计量单位``作为``Calculator``的本地状态，这个状态从输入框中提升而来，并作为两个输入框的"单一数据源"。  
+例如，当我们在``Celsius``输入框中输入 37 时，``Calculator``的state是：
+```javascript
+{
+  temperature: '37',
+  scale: 'c'
+}
+```
+随后如果我们在``Fahrenheit``中输入 212 ，``Calculator``中的state将变为：
+```javascript
+{
+  temperature: '212',
+  scale: 'f'
+}
+```
+我们可以同时存储两个输入框中的值，但事实上并没有这个必要。存储最近被更新的输入框的值及该输入框所代表的单位即可。我们可以通过这两者计算出另一个输入框中应显示的内容。  
+之所以说输入框同步，是因为他们的数据值均从同一个数据源计算而来：
+```javascript
+class Calculator extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleCelsiusChange = this.handleCelsiusChange.bind(this);
+    this.handleFahrenheitChange = this.handleFahrenheitChange.bind(this);
+    this.state = {temperature: '', scale: 'c'};
+  }
+
+  handleCelsiusChange(temperature) {
+    this.setState({scale: 'c', temperature});
+  }
+
+  handleFahrenheitChange(temperature) {
+    this.setState({scale: 'f', temperature});
+  }
+
+  render() {
+    const scale = this.state.scale;
+    const temperature = this.state.temperature;
+    const celsius = scale === 'f' ? tryConvert(temperature, toCelsius) : temperature;
+    const fahrenheit = scale === 'c' ? tryConvert(temperature, toFahrenheit) : temperature;
+
+    return (
+      <div>
+        <TemperatureInput
+          scale="c"
+          temperature={celsius}
+          onTemperatureChange={this.handleCelsiusChange} />
+        <TemperatureInput
+          scale="f"
+          temperature={fahrenheit}
+          onTemperatureChange={this.handleFahrenheitChange} />
+        <BoilingVerdict
+          celsius={parseFloat(celsius)} />
+      </div>
+    );
+  }
+}
+```
+[在CodePen中尝试](http://codepen.io/valscion/pen/jBNjja?editors=0010)。  
+现在，无论我们在输入框中输入什么，``Calculator``中的``this.state.temperature``和``this.state.scale``都会得到相应的更新。只要其中一个输入框的值被用户更新，另一个也会被重新计算。  
+让我们回顾一下，当编辑一个输入框时，发生了什么：
+* React调用``<input>``中被指定的``onChange``方法。在本例中，该方法为``TemperatureInput``中的``handleChange``。  
+* ``TemperatureInput``组件中的``handleChange``方法调用``this.props.onTempatureChange``。该组件的属性(包括``onTempatureChange``)由其父组件``Calculator``提供  
+* 在其被渲染前，``Calculator``为单位是摄氏度的``TemperatureInput``指定的``onTempatureChange``的方法是``handleCelsiusChange``，为华氏度指定的是``handleFahrenheitChange``。因此我们在不同的输入框输入内容时会调用``Calculator``中相应的``handlexxChange``方法。  
+* 在这些方法中，``Calculator``组件根据输入框中由用户更新的温度值及该输入框的单位，调用``setState``更新自己的状态，从而令React对其重新绘制。  
+* React调用``Calculator``组件的``render``方法绘制组件。两个输入框中的值都会根据用户输入的温度和被用户输入的那个输入框的单位重新计算。在这一步，进行了温度的转换。
+* React调用各``TemperatureInput``的``render``方法及其由``Calculator``赋给的新属性值，绘制出两个输入框。  
+* React DOM更新DOM。我们刚刚编辑的输入框接受其当前值，另一个输入框更新为转换后的温度。  
+
+#### 小结
+React应用中任何数据的改变都应遵从 __单一数据源__ 原则。  
+通常情况下，状态应被优先加入到渲染时依赖该值的组件中。但当有其他组件也依赖于该状态时，我们可以将其提升至组件们的最近公共祖先组件中，而不是尝试同步不同组件间的状态。我们应该遵守数据流的从上至下的原则。  
+相对双向绑定来说，状态提升需要编写更多无意义的样板代码，但这么做的好处在于能够更方便的查找与隔离bugs-因为任何状态都只能由某一个组件对其进行修改，这能大大的减少查找bug产生的范围。另外，我们可以轻松的自定义任何逻辑对用户的输入进行预处理(如转换或禁止输入等)。  
+当某一个数据可以通过属性或状态得到，那么该数据也许不适合作为状态存在。例如我们先前的例子，我们并没有同时保存``celsiusValue``和``fahrenheitValue``两个值，而是保存了用户最近一次输入的数值和用户输入的输入框单位。另一个输入框的内容可以通过``render``方法计算出来。 __这么做让我们能够在无论是否使用四舍五入等估算方法，都不会丢失用户输入的精度。__  
+当我们看到UI出现不符合预期的错误时，我们可以通过[React开发者工具](https://github.com/facebook/react-devtools)进行排查，揪出负责更新该状态的组件。这对找出bug的源头非常有帮助：  
+
+![React Developer Tools](http://7xv88e.com1.z0.glb.clouddn.com/react-devtools-state.gif)
