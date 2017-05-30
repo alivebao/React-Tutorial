@@ -12,6 +12,7 @@
   9. [列表和键](#列表和键)
   10. [表单](#表单)
   11. [状态提升](#状态提升)
+  12. [组合与继承](#组合与继承)
 
 ## 介绍
 本文译自[React官方文档](https://facebook.github.io/react/docs/hello-world.html)
@@ -1864,3 +1865,146 @@ React应用中任何数据的改变都应遵从 __单一数据源__ 原则。
 当我们看到UI出现不符合预期的错误时，我们可以通过[React开发者工具](https://github.com/facebook/react-devtools)进行排查，揪出负责更新该状态的组件。这对找出bug的源头非常有帮助：  
 
 ![React Developer Tools](http://7xv88e.com1.z0.glb.clouddn.com/react-devtools-state.gif)
+
+## 组合与继承
+
+React拥有强大的组合模型，我们建议使用组合而非继承来重用组件间的代码。  
+在本部分，我们将展示一些刚接触React的开发者在面对某些情况时可能使用继承的例子，并用组合的方式解决他们。  
+
+#### 包含
+一些组件在开始时不能确定是否有子组件，尤其是对``Sidebar``和``Dialog``等这类用于表示``box``的组件而言特别常见。  
+对于这类组件，我们建议使用特定的``children``属性将子元素直接传递到他们的输出中：
+```javascript
+function FancyBorder(props) {
+  return (
+    <div className={'FancyBorder FancyBorder-' + props.color}>
+      {props.children}
+    </div>
+  );
+}
+```
+这使得其他组件能通过嵌套JSX向该组件传递任意的子元素：
+```javascript
+function WelcomeDialog() {
+  return (
+    <FancyBorder color="blue">
+      <h1 className="Dialog-title">
+        Welcome
+      </h1>
+      <p className="Dialog-message">
+        Thank you for visiting our spacecraft!
+      </p>
+    </FancyBorder>
+  );
+}
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/ozqNOV?editors=0010)。  
+在JSX标签``<FancyBorder>``中包含的所有东西都会作为``children``属性传递进去。由于``FancyBorder``在``<div>``中渲染``{props.children}``，传递给``FancyBorder``的元素直接被显示出来。  
+还有一类比较少见的情况，有时我们可能在一个组件中需要多个占位符。这时我们不必要强制使用``children``，而可以使用自己自定义的属性：
+```javascript
+function SplitPane(props) {
+  return (
+    <div className="SplitPane">
+      <div className="SplitPane-left">
+        {props.left}
+      </div>
+      <div className="SplitPane-right">
+        {props.right}
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <SplitPane
+      left={
+        <Contacts />
+      }
+      right={
+        <Chat />
+      } />
+  );
+}
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/gwZOJp?editors=0010)。  
+React元素``<Contacts />``和``<Chat />``就是对象，我们可以像传递其他数据一样，将他们作为属性进行传递。  
+
+#### 特例
+有时我们会遇到某个组件被另一个组件包含的情况，如``WelcomeDialog``是一种特殊的``Dialog``。  
+在React中，这也可以通过组合来完成-用一个更"特殊"的组件包含那个更"通用"的组件，并使用属性对其进行配置：
+```javascript
+function Dialog(props) {
+  return (
+    <FancyBorder color="blue">
+      <h1 className="Dialog-title">
+        {props.title}
+      </h1>
+      <p className="Dialog-message">
+        {props.message}
+      </p>
+    </FancyBorder>
+  );
+}
+
+function WelcomeDialog() {
+  return (
+    <Dialog
+      title="Welcome"
+      message="Thank you for visiting our spacecraft!" />
+  );
+}
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/kkEaOZ?editors=0010)。 
+组合对于用类定义的组件也同样适用：
+```javascript
+function Dialog(props) {
+  return (
+    <FancyBorder color="blue">
+      <h1 className="Dialog-title">
+        {props.title}
+      </h1>
+      <p className="Dialog-message">
+        {props.message}
+      </p>
+      {props.children}
+    </FancyBorder>
+  );
+}
+
+class SignUpDialog extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleChange = this.handleChange.bind(this);
+    this.handleSignUp = this.handleSignUp.bind(this);
+    this.state = {login: ''};
+  }
+
+  render() {
+    return (
+      <Dialog title="Mars Exploration Program"
+              message="How should we refer to you?">
+        <input value={this.state.login}
+               onChange={this.handleChange} />
+        <button onClick={this.handleSignUp}>
+          Sign Me Up!
+        </button>
+      </Dialog>
+    );
+  }
+
+  handleChange(e) {
+    this.setState({login: e.target.value});
+  }
+
+  handleSignUp() {
+    alert(`Welcome aboard, ${this.state.login}!`);
+  }
+}
+```
+[在CodePen中尝试](https://codepen.io/gaearon/pen/gwZbYa?editors=0010)。 
+
+#### 那么，继承呢？
+在现有的React组件实践中，我们暂时还没有发现任何一种使用继承能够优于组合方式的情况。  
+使用属性和组合已经能为我们提供明确、安全的方法定制我们组件的外观和行为。 __记住，组件可以接受任何属性，包括原始值，React元素或函数。__  
+想要在组件中复用非UI功能的代码，我们建议将其提取至单独的JS模块中。组件可以导入该模块，使用其中的函数、对象或类，而不需要去扩展它。
