@@ -2049,7 +2049,7 @@ JSON API返回的数据为：
     * ``ProductRow``
     
 #### 第二步-在React中构建一个静态版本
-[在CodePen中尝试](https://codepen.io/lacker/embed/vXpAgj?height=600&amp;theme-id=0&amp;slug-hash=vXpAgj&amp;default-tab=js&amp;user=lacker&amp;embed-version=2)。  
+[在CodePen中查看](https://codepen.io/lacker/embed/vXpAgj?height=600&amp;theme-id=0&amp;slug-hash=vXpAgj&amp;default-tab=js&amp;user=lacker&amp;embed-version=2)。  
 有了组件的层次结构，是时候实现我们的APP了。最简单的方式是先建立一个“接受数据模型并渲染UI，但不存在交互”的版本。最好解耦这些处理-建立一个静态版本不需要思考太多，但添加交互往往需要考虑很多情况。  
 建立一个渲染数据模型的静态APP，需要构建复用其他组件并通过属性传递数据的组件。属性是一个从父组件向子组件传递数据的方法。如果您熟悉状态(state)的概念， __不要在这个静态版本的APP中使用state。__ state只用于交互，也就是那些会随时变动的数据。由于这是个静态APP，我们不需要使用state。  
 我们可以自顶向下或自底向上构建应用。在构建简单的应用时，通常自顶向下更容易。在构建大型应用时，自底向上能够更方便与编写测试用例。  
@@ -2075,7 +2075,7 @@ JSON API返回的数据为：
 * 复选框的值
 
 #### 第四步-确定state的位置  
-[在CodePen中尝试](https://codepen.io/lacker/embed/ORzEkG?height=600&amp;theme-id=0&amp;slug-hash=ORzEkG&amp;default-tab=js&amp;user=lacker&amp;embed-version=2)。  
+[在CodePen中查看](https://codepen.io/lacker/embed/ORzEkG?height=600&amp;theme-id=0&amp;slug-hash=ORzEkG&amp;default-tab=js&amp;user=lacker&amp;embed-version=2)。  
 我们在上一步确认了应用的最小state集合。接下来，要确定哪些组件是可变的。或者说，确定这些state的owner。  
 记住：React是自上而下的单向数据流层级。这也许会导致无法立即确定state应放在哪个组件比较合适。我们可以按照以下步骤进行确定：
 对于应用中的每个state：  
@@ -2094,8 +2094,8 @@ JSON API返回的数据为：
 我们可以看一下我们应用的行为：在``filterText``中设置``"ball"``并刷新应用。我们可以看到数据被正确的更新了。
 
 #### 第五步-添加反向数据流
-[在CodePen中尝试](https://codepen.io/rohan10/embed/qRqmjd?height=265&amp;theme-id=0&amp;slug-hash=qRqmjd&amp;default-tab=js%2Cresult&amp;user=rohan10&amp;embed-version=2&amp;pen-title=Thinking%20In%20React%3A%20Step%205)。  
-现在，我们已经构建了一个能够正确渲染、数据流从上至下的应用。是时候支持另一种反向的数据流方式了-层次结构中底层的form组件须有更新``FilterableProducTable``中的state。  
+[在CodePen中查看](https://codepen.io/rohan10/embed/qRqmjd?height=265&amp;theme-id=0&amp;slug-hash=qRqmjd&amp;default-tab=js%2Cresult&amp;user=rohan10&amp;embed-version=2&amp;pen-title=Thinking%20In%20React%3A%20Step%205)。  
+现在，我们已经构建了一个能够正确渲染、数据流从上至下的应用。是时候支持另一种反向的数据流方式了-层次结构中底层的form组件须有更新``FilterableProducTable``中的state。  
 React采用了明确的数据流向，使我们能够更轻松的理解程序的工作过程。但这也使得其相对于传统的双向数据绑定而言，在有些情况下需要多敲一些代码。  
 如果我们尝试在当前版本中修改复选框的内容，我们会发现React并未对其作出响应-这是有意为之的，我们已经设置了``input``中``value``的props由``FilterableProducTable``的``state``传递而来，使其始终保持一致。  
 那么我们想要的是什么呢？我们想保证无论用户何时修改表格中的内容，state都会及时更新并反映出这些变化。由于组件应该只能够更新他们自己的state，``FilterableProducTable``将传递回调函数给``SearchBar``，这些回调函数在需要更新state时触发。我们可以将其绑定在onChange事件上接受通知。由``FilterableProducTable``传递的回调函数将调用``setState()``，从而应用程序会进行更新。  
