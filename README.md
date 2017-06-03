@@ -13,6 +13,7 @@
   10. [表单](#表单)
   11. [状态提升](#状态提升)
   12. [组合与继承](#组合与继承)
+  13. [React的编程思想](#React的编程思想)
 
 ## 介绍
 本文译自[React官方文档](https://facebook.github.io/react/docs/hello-world.html)
@@ -2007,4 +2008,98 @@ class SignUpDialog extends React.Component {
 #### 那么，继承呢？
 在现有的React组件实践中，我们暂时还没有发现任何一种使用继承能够优于组合方式的情况。  
 使用属性和组合已经能为我们提供明确、安全的方法定制我们组件的外观和行为。 __记住，组件可以接受任何属性，包括原始值，React元素或函数。__  
-想要在组件中复用非UI功能的代码，我们建议将其提取至单独的JS模块中。组件可以导入该模块，使用其中的函数、对象或类，而不需要去扩展它。
+想要在组件中复用非UI功能的代码，我们建议将其提取至单独的JS模块中。组件可以导入该模块，使用其中的函数、对象或类，而不需要去扩展它。  
+
+## React的编程思想
+从我们的角度来看，React是使用JavaScript构建大型、高效Web应用的首选，这在Facebook和Instagram中已经很好的证明了。  
+React最棒的部分之一在于-当我们构建我们的产品时，它会影响我们对产品的思考。在本部分，我们将引导您完成一个使用React构建某应用(一个可搜索的产品列表)的思考过程。  
+
+#### 从视觉稿(Mock)开始
+假设我们已经有一个JSON API和一个设计师的初稿，如图所示：
+![](http://7xv88e.com1.z0.glb.clouddn.com/thinking-in-react-mock.png)
+JSON API返回的数据为：  
+```javascript
+[
+  {category: "Sporting Goods", price: "$49.99", stocked: true, name: "Football"},
+  {category: "Sporting Goods", price: "$9.99", stocked: true, name: "Baseball"},
+  {category: "Sporting Goods", price: "$29.99", stocked: false, name: "Basketball"},
+  {category: "Electronics", price: "$99.99", stocked: true, name: "iPod Touch"},
+  {category: "Electronics", price: "$399.99", stocked: false, name: "iPhone 5"},
+  {category: "Electronics", price: "$199.99", stocked: true, name: "Nexus 7"}
+];
+```
+
+#### 第一步-将UI分解至组件的层次结构中
+我们首先会做的事是为视觉稿中的每个组件、子组件画框，并给他们命名。如果我们是和设计师一起工作的，他们可能已经完成了这部分内容。和他们交流一下，约定一下命名规范。他们在PS上给图层的命名可能最终成为我们React组件的名称。  
+但我们应如何拆分组件？把这当做拆分一个新方法或新对象吧。一个技巧是 __单一职责原则__ ，也就是说，理想情况下，一个组件只做一件事。若某个组件正变得越来越复杂，我们有必要对其进行进一步的拆分。  
+由于常常需要向用户展示JSON数据模型，若模型建立的正确，UI(以及组件结构)能够得到很好的映射。这是因为UI和数据模型往往拥有相同的信息结构，也就是说，将UI拆分成组件的工作通常比较琐碎。只需将其拆分成对应数据模型的片段即可。  
+![](http://7xv88e.com1.z0.glb.clouddn.com/thinking-in-react-components.png)  
+可以看到，在我们这个简单的应用中有5个组件，我们已经对每个组件代码的数据进行了标注。  
+1. ``FilterableProducTable``(橘色)：包含整个实例。  
+2. ``SearchBar``(蓝色)：接收所有的用户输入。  
+3. ``ProductTable``(绿色)：基于用户的输入显示并过滤数据集合。  
+4. ``ProductCategoryRow``(宝石绿)：显示每个类别的的标题。  
+5. ``ProductRow``(红色)：按行显示每个产品的数据。  
+以``ProductCategoryRow``为例子，我们可以发现包含"姓名"和"价格"的表头并不是独立的组件。这属于个人选择，也可以有别的方案。在本例中，将其作为``ProductTable``的一部分来处理，是因为其是数据集合渲染的一部分(这部分属于``ProductTable``的职责)。然而，若表头很复杂(如需要为其添加排序功能等)，则将其拆分成一个``ProductTableHeader``组件是很有必要的。  
+现在我们在视觉稿中标识出了我们的组件，现在让我们对他们进行层级排列。出现在A组件内部的组件B，就是A的子组件：
+* ``FilterableProducTable``
+  * ``SearchBar``
+  * ``ProductTable``
+    * ``ProductCategoryRow``
+    * ``ProductRow``
+    
+#### 第二步-在React中构建一个静态版本
+[在CodePen中尝试](https://codepen.io/lacker/embed/vXpAgj?height=600&amp;theme-id=0&amp;slug-hash=vXpAgj&amp;default-tab=js&amp;user=lacker&amp;embed-version=2)。  
+有了组件的层次结构，是时候实现我们的APP了。最简单的方式是先建立一个“接受数据模型并渲染UI，但不存在交互”的版本。最好解耦这些处理-建立一个静态版本不需要思考太多，但添加交互往往需要考虑很多情况。  
+建立一个渲染数据模型的静态APP，需要构建复用其他组件并通过属性传递数据的组件。属性是一个从父组件向子组件传递数据的方法。如果您熟悉状态(state)的概念， __不要在这个静态版本的APP中使用state。__ state只用于交互，也就是那些会随时变动的数据。由于这是个静态APP，我们不需要使用state。  
+我们可以自顶向下或自底向上构建应用。在构建简单的应用时，通常自顶向下更容易。在构建大型应用时，自底向上能够更方便与编写测试用例。  
+在这步结束时，我们已经有了一个可重用的，渲染数据模型的组件库。由于是个静态应用，这些组件只用``render()``方法。层级结构顶层的组件(``FilterableProducTable``)将接收数据模型作为一个属性(props)。当我们修改数据模型并再次调用``ReactDOM.render()``时，UI将同步更新。由于过程比较简单，观测UI的更新及相关数据的变化是非常方便的。React的 __单向数据流__ (也称为单向绑定)能够在开发过程中保证模块化和高性能。  
+
+#### 第三步-确定UI状态(state)的最小(但完整的)表示
+为了让UI变得可交互，我们需要能更改底层的数据模型。React通过state使这一过程变得容易。  
+为了正确的构架应用，我们首先要考虑的是应用需要的可变状态的最小集合。这里的关键是DRY(Don't Repeat Yourself)原则。找出应用所需的最小的状态的集合，确保该状态集合可按需计算出应用的各状态。例如，若我们正在建立一个TODO列表，那么我们只要保留TODO元素数组即可，不需要用一个单独的state用于存储数组的长度(该数字可由数组得出)。  
+想想我们例子中的所有数据，我们有：
+* 产品的原始列表
+* 用户输入的搜索文本
+* 复选框的值
+* 过滤后的产品列表  
+
+让我们过一遍这些数据，确认那些属于state。我们可以通过三个问题进行判断：
+1. 其是否由父组件通过props传递-若是，其可能不是state
+2. 其是否是固定不变的-若是，其可能不是state
+3. 该值可通过其他state或props计算出来吗-若是，其可能不是state  
+
+产品的原始列表作为props传递，因此其不是state。用户输入的搜索文本和复选框的值看起来是state(他们会发生变化，且无法通过其他props/state计算得出)。最后，过滤后的产品列表不属于state-其可以通过产品的原始列表+用户输入的搜索文本+复选框的值计算得出。  
+所以，根据我们得到的结果，最终的state是：
+* 用户输入的搜索文本
+* 复选框的值
+
+#### 第四步-确定state的位置  
+[在CodePen中尝试](https://codepen.io/lacker/embed/ORzEkG?height=600&amp;theme-id=0&amp;slug-hash=ORzEkG&amp;default-tab=js&amp;user=lacker&amp;embed-version=2)。  
+我们在上一步确认了应用的最小state集合。接下来，要确定哪些组件是可变的。或者说，确定这些state的owner。  
+记住：React是自上而下的单向数据流层级。这也许会导致无法立即确定state应放在哪个组件比较合适。我们可以按照以下步骤进行确定：
+对于应用中的每个state：  
+* 确定每个基于该state渲染的组件  
+* 找到公共的父组件(及所有需要该state组件的公共祖先组件)  
+* 该state应置于公共父组件或更高层级的组件中  
+* 若无法找到合适的放置state的位置，可创建一个新组件存储该state，并将这个新组件添加至公共父组件的上层  
+将这个策略应用于我们的例子中：  
+* ``ProductTable``需要机遇state过滤产品列表。``SearchBar``需要展示搜索文本和选中状态  
+* 公共父组件为``FilterableProducTable``  
+* 从概念上来说，将过滤文本和选中的值置于``FilterableProducTable``是合适的  
+综上，我们将state置于``FilterableProducTable``中。  
+首先，添加一个实例属性``this.state = {filterText: '', inStockOnly: false}``到``FilterableProducTable``的构造函数中，用于初始化程序的状态。  
+然后，将``filterText``和``isStockOnly``作为props传递给``ProductTable``和``SearchBar``。  
+最后，使用这些props过滤``ProductTable``中的行，并设置表单字段中``SearchBar``的值。  
+我们可以看一下我们应用的行为：在``filterText``中设置``"ball"``并刷新应用。我们可以看到数据被正确的更新了。
+
+#### 第五步-添加反向数据流
+[在CodePen中尝试](https://codepen.io/rohan10/embed/qRqmjd?height=265&amp;theme-id=0&amp;slug-hash=qRqmjd&amp;default-tab=js%2Cresult&amp;user=rohan10&amp;embed-version=2&amp;pen-title=Thinking%20In%20React%3A%20Step%205)。  
+现在，我们已经构建了一个能够正确渲染、数据流从上至下的应用。是时候支持另一种反向的数据流方式了-层次结构中底层的form组件须有更新``FilterableProducTable``中的state。  
+React采用了明确的数据流向，使我们能够更轻松的理解程序的工作过程。但这也使得其相对于传统的双向数据绑定而言，在有些情况下需要多敲一些代码。  
+如果我们尝试在当前版本中修改复选框的内容，我们会发现React并未对其作出响应-这是有意为之的，我们已经设置了``input``中``value``的props由``FilterableProducTable``的``state``传递而来，使其始终保持一致。  
+那么我们想要的是什么呢？我们想保证无论用户何时修改表格中的内容，state都会及时更新并反映出这些变化。由于组件应该只能够更新他们自己的state，``FilterableProducTable``将传递回调函数给``SearchBar``，这些回调函数在需要更新state时触发。我们可以将其绑定在onChange事件上接受通知。由``FilterableProducTable``传递的回调函数将调用``setState()``，从而应用程序会进行更新。  
+尽管这听起来很复杂，但其实只需少量的代码就能够实现。同时这能够清晰的展示应用中的数据流向。  
+
+#### 写在最后
+希望这能够给你一些在关于使用React构建组件和应用方法的想法。这种方法也许确实会让你比平时多写一些代码，但请记住，代码的可读性、模块性远比少写几行代码来的重要。当创建一个大型组件库时，您会感激这些结构清晰、模块化且可重用的代码:-)
